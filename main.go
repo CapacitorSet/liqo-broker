@@ -72,7 +72,7 @@ func main() {
 		klog.Fatal(err)
 	}
 
-	broker := NewBroker(ctx, clientset, *resyncPeriod, mgr.GetClient())
+	broker := NewBroker(clientset, *resyncPeriod, mgr.GetClient())
 	if err = mgr.Add(broker); err != nil {
 		klog.Fatal(err)
 	}

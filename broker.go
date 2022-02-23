@@ -20,20 +20,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// ResourceUpdateNotifier represents an interface for OfferUpdater to receive resource updates.
+// ResourceUpdateNotifier represents an interface to receive resource updates.
 type ResourceUpdateNotifier interface {
 	// NotifyChange signals that a change in resources may have occurred.
 	NotifyChange()
-}
-
-// ResourceReader represents an interface to read the available resources in this cluster.
-type ResourceReader interface {
-	// ReadResources returns the resources available for usage by the given cluster.
-	ReadResources(clusterID string) corev1.ResourceList
-	// Register sets the component that will be notified of changes.
-	Register(ResourceUpdateNotifier)
-	// RemoveClusterID removes the given clusterID from all internal structures.
-	RemoveClusterID(clusterID string)
 }
 
 // Broker monitors resources on foreign clusters. It implements the ResourceMonitor interface.
@@ -55,8 +45,7 @@ type Broker struct {
 }
 
 // NewBroker creates a new Broker.
-func NewBroker(ctx context.Context, clientset kubernetes.Interface,
-	resyncPeriod time.Duration, k8sClient client.Client) *Broker {
+func NewBroker(clientset kubernetes.Interface, resyncPeriod time.Duration, k8sClient client.Client) *Broker {
 	nodeFactory := informers.NewSharedInformerFactoryWithOptions(
 		clientset, resyncPeriod, informers.WithTweakListOptions(virtualNodesFilter),
 	)
@@ -96,7 +85,7 @@ func (b *Broker) Start(ctx context.Context) error {
 	return nil
 }
 
-// ReadResourcesInternal returns the resources available for the given cluster.
+// ReadResources returns the resources available for the given cluster.
 func (b *Broker) ReadResources(ctx context.Context, clusterID string) (corev1.ResourceList, error) {
 	totalResources := make(corev1.ResourceList)
 	for cluster := range b.nodeResources {

@@ -4,6 +4,7 @@ option go_package = "./main";
 service broker {
   rpc ReadResources (ReadRequest) returns (ReadResponse);
   rpc RemoveCluster (RemoveRequest) returns (RemoveResponse);
+  rpc Subscribe (SubscribeRequest) returns (stream UpdateNotification);
 }
 
 message ReadRequest {
@@ -19,4 +20,10 @@ message RemoveRequest {
 }
 
 message RemoveResponse {
+}
+
+message SubscribeRequest {
+}
+
+message UpdateNotification {
 }

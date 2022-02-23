@@ -25,6 +25,7 @@ const _ = grpc.SupportPackageIsVersion7
 type BrokerClient interface {
 	ReadResources(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*ReadResponse, error)
 	RemoveCluster(ctx context.Context, in *RemoveRequest, opts ...grpc.CallOption) (*RemoveResponse, error)
+	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (Broker_SubscribeClient, error)
 }
 
 type brokerClient struct {
@@ -53,12 +54,45 @@ func (c *brokerClient) RemoveCluster(ctx context.Context, in *RemoveRequest, opt
 	return out, nil
 }
 
+func (c *brokerClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (Broker_SubscribeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Broker_ServiceDesc.Streams[0], "/broker/Subscribe", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &brokerSubscribeClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Broker_SubscribeClient interface {
+	Recv() (*UpdateNotification, error)
+	grpc.ClientStream
+}
+
+type brokerSubscribeClient struct {
+	grpc.ClientStream
+}
+
+func (x *brokerSubscribeClient) Recv() (*UpdateNotification, error) {
+	m := new(UpdateNotification)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // BrokerServer is the server API for Broker service.
 // All implementations must embed UnimplementedBrokerServer
 // for forward compatibility
 type BrokerServer interface {
 	ReadResources(context.Context, *ReadRequest) (*ReadResponse, error)
 	RemoveCluster(context.Context, *RemoveRequest) (*RemoveResponse, error)
+	Subscribe(*SubscribeRequest, Broker_SubscribeServer) error
 	mustEmbedUnimplementedBrokerServer()
 }
 
@@ -71,6 +105,9 @@ func (UnimplementedBrokerServer) ReadResources(context.Context, *ReadRequest) (*
 }
 func (UnimplementedBrokerServer) RemoveCluster(context.Context, *RemoveRequest) (*RemoveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveCluster not implemented")
+}
+func (UnimplementedBrokerServer) Subscribe(*SubscribeRequest, Broker_SubscribeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
 func (UnimplementedBrokerServer) mustEmbedUnimplementedBrokerServer() {}
 
@@ -121,6 +158,27 @@ func _Broker_RemoveCluster_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Broker_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BrokerServer).Subscribe(m, &brokerSubscribeServer{stream})
+}
+
+type Broker_SubscribeServer interface {
+	Send(*UpdateNotification) error
+	grpc.ServerStream
+}
+
+type brokerSubscribeServer struct {
+	grpc.ServerStream
+}
+
+func (x *brokerSubscribeServer) Send(m *UpdateNotification) error {
+	return x.ServerStream.SendMsg(m)
+}
+
 // Broker_ServiceDesc is the grpc.ServiceDesc for Broker service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -137,6 +195,12 @@ var Broker_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Broker_RemoveCluster_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Subscribe",
+			Handler:       _Broker_Subscribe_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "resource-reader.proto",
 }
