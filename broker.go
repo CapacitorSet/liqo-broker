@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/liqotech/liqo/pkg/virtualKubelet/forge"
 	"time"
 
 	offv1alpha1 "github.com/liqotech/liqo/apis/offloading/v1alpha1"
@@ -161,14 +160,12 @@ func (b *Broker) onNodeDelete(obj interface{}) {
 func (b *Broker) onNamespaceAdd(obj interface{}) {
 	ns := obj.(*corev1.Namespace)
 	klog.V(5).Infof("Namespace add: %s", ns.Name)
-	clusterID := ns.Annotations[forge.LiqoOriginClusterIDKey]
+	clusterID := ns.Labels[liqoconst.RemoteClusterID]
 	if clusterID == "" {
 		klog.V(5).Infof("Not a Liqo namespace")
 		return
 	}
 
-	// todo: check that clusterid is from a cluster that requested resources from us
-	_ = clusterID
 	klog.Infof("Creating a NamespaceOffloading in response to new namespace %s", ns.Name)
 	nsOffloading := &offv1alpha1.NamespaceOffloading{
 		ObjectMeta: metav1.ObjectMeta{
@@ -215,7 +212,7 @@ func (b *Broker) getClusterOffer(ctx context.Context, clusterID string) (corev1.
 	}
 
 	if len(offerList.Items) != 1 {
-		return nil, fmt.Errorf("too much offers for cluster %s", clusterID)
+		return nil, fmt.Errorf("too many offers for cluster %s", clusterID)
 	}
 
 	return offerList.Items[0].Spec.ResourceQuota.Hard, nil
