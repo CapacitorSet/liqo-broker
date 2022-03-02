@@ -32,11 +32,9 @@ It can be used to share the resources of a number of "provider" clusters and pre
 
 ### On the customer's cluster
 
- - Before installing Liqo, set `virtualKubelet.imageName` to `capacitorset/liqo-broker-vk:latest` in the Helm values; if Liqo is already running, edit the `liqo-controller-manager` deployment to set `--kubelet-image=capacitorset/liqo-broker-vk:latest`.
-
  - Take note of the address of the service you reflected in the previous steps on the cluster. For example, if `kubectl get svc -A` shows that the service is called `liqo-network-manager` and belongs to the namespace `liqo-broker-b9d3d5`, then the address would be `liqo-network-manager.liqo-broker-b9d3d5.svc.cluster.local`.
 
- - Edit the `liqo-controller-manager` deployment to add the following command line flag: `--kubelet-extra-args=--remote-ipam=server=liqo-network-manager.liqo-broker-b9d3d5.svc.cluster.local` (where the argument is the address you found in the previous step).
+ - Edit the `liqo-controller-manager` deployment to add the following command line flag: `--kubelet-extra-args=--remote-ipam=server=liqo-network-manager.liqo-broker-b9d3d5.svc.cluster.local` (where the argument is the address you found in the previous step). Also, set `--kubelet-image=capacitorset/liqo-broker-vk:latest`.
 
 ## Usage
 
