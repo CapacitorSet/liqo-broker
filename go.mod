@@ -3,9 +3,8 @@ module github.com/CapacitorSet/liqo-broker
 go 1.17
 
 require (
-	github.com/liqotech/liqo v0.3.3-0.20220302135711-ddde83faa459
+	github.com/liqotech/liqo v0.3.3-0.20220302223759-09607bde4037
 	google.golang.org/grpc v1.43.0
-	google.golang.org/protobuf v1.27.1
 	k8s.io/api v0.23.3
 	k8s.io/apimachinery v0.23.3
 	k8s.io/client-go v0.23.3
@@ -49,6 +48,7 @@ require (
 	gomodules.xyz/jsonpatch/v2 v2.2.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20220107163113-42d7afdf6368 // indirect
+	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
@@ -56,6 +56,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.23.2 // indirect
 	k8s.io/component-base v0.23.3 // indirect
 	k8s.io/kube-openapi v0.0.0-20211115234752-e816edb12b65 // indirect
+	k8s.io/kubectl v0.23.3 // indirect
 	k8s.io/metrics v0.23.3 // indirect
 	k8s.io/utils v0.0.0-20211116205334-6203023598ed // indirect
 	sigs.k8s.io/json v0.0.0-20211208200746-9f7c6b3444d2 // indirect

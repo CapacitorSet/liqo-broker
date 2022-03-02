@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/liqotech/liqo/pkg/liqo-controller-manager/resource-request-controller/resource-monitors"
 	"google.golang.org/grpc"
 	"k8s.io/klog/v2"
 )
@@ -12,8 +13,8 @@ import (
 type BrokerGRPCServer struct {
 	Server *grpc.Server
 	Broker *Broker
-	BrokerServer
-	PushChannel Broker_SubscribeServer // A gRPC endpoint where to push update notifications
+	resourcemonitors.ResourceReaderServer
+	PushChannel resourcemonitors.ResourceReader_SubscribeServer // A gRPC endpoint where to push update notifications
 }
 
 func (b *BrokerGRPCServer) Start(ctx context.Context) error {
@@ -22,7 +23,7 @@ func (b *BrokerGRPCServer) Start(ctx context.Context) error {
 		return err
 	}
 	b.Server = grpc.NewServer()
-	RegisterBrokerServer(b.Server, b)
+	resourcemonitors.RegisterResourceReaderServer(b.Server, b)
 	go func() {
 		<-ctx.Done()
 		b.Server.GracefulStop()
@@ -34,23 +35,23 @@ func (b *BrokerGRPCServer) Start(ctx context.Context) error {
 	return nil
 }
 
-func (b *BrokerGRPCServer) ReadResources(ctx context.Context, req *ReadRequest) (*ReadResponse, error) {
+func (b *BrokerGRPCServer) ReadResources(ctx context.Context, req *resourcemonitors.ReadRequest) (*resourcemonitors.ReadResponse, error) {
 	response, err := b.Broker.ReadResources(ctx, req.GetOriginator())
 	if err != nil {
-		return &ReadResponse{}, err
+		return &resourcemonitors.ReadResponse{}, err
 	}
-	protobufResponse := &ReadResponse{Resources: map[string]string{}}
+	protobufResponse := &resourcemonitors.ReadResponse{Resources: map[string]string{}}
 	for name, value := range response {
 		marshaled, err := value.MarshalJSON()
 		if err != nil {
-			return &ReadResponse{}, err
+			return &resourcemonitors.ReadResponse{}, err
 		}
 		protobufResponse.Resources[name.String()] = string(marshaled)
 	}
 	return protobufResponse, nil
 }
 
-func (b *BrokerGRPCServer) Subscribe(req *SubscribeRequest, srv Broker_SubscribeServer) error {
+func (b *BrokerGRPCServer) Subscribe(req *resourcemonitors.SubscribeRequest, srv resourcemonitors.ResourceReader_SubscribeServer) error {
 	if b.PushChannel != nil {
 		klog.Warningf("Subscribe(): a PushChannel was already configured, and was overwritten")
 	}
@@ -65,13 +66,13 @@ func (b *BrokerGRPCServer) NotifyChange() {
 		klog.Errorf("NotifyChange() was called with no configured PushChannel")
 		return
 	}
-	err := b.PushChannel.Send(&UpdateNotification{})
+	err := b.PushChannel.Send(&resourcemonitors.UpdateNotification{})
 	if err != nil {
 		klog.Error(err)
 	}
 }
 
-func (b *BrokerGRPCServer) RemoveCluster(ctx context.Context, req *RemoveRequest) (*RemoveResponse, error) {
+func (b *BrokerGRPCServer) RemoveCluster(ctx context.Context, req *resourcemonitors.RemoveRequest) (*resourcemonitors.RemoveResponse, error) {
 	b.Broker.RemoveClusterID(req.GetCluster())
-	return &RemoveResponse{}, nil
+	return &resourcemonitors.RemoveResponse{}, nil
 }
