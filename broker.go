@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/liqotech/liqo/pkg/virtualKubelet/forge"
 	"time"
 
 	offv1alpha1 "github.com/liqotech/liqo/apis/offloading/v1alpha1"
@@ -121,8 +122,10 @@ func (b *Broker) RemoveClusterID(clusterID string) {
 // onNodeAddOrUpdate reacts to virtual nodes being created, and registers the corresponding ResourceOffer.
 func (b *Broker) onNodeAddOrUpdate(obj interface{}) {
 	node := obj.(*corev1.Node)
+	klog.V(5).Infof("Node add: %s", node.Name)
 	// Do not register the ResourceOffer until the node is ready
 	if !utils.IsNodeReady(node) {
+		klog.V(5).Infof("Node is not ready", node.Name)
 		return
 	}
 	clusterID := node.Labels[liqoconst.RemoteClusterID]
@@ -143,8 +146,10 @@ func (b *Broker) onNodeAddOrUpdate(obj interface{}) {
 
 func (b *Broker) onNodeDelete(obj interface{}) {
 	node := obj.(*corev1.Node)
+	klog.V(5).Infof("Node delete: %s", node.Name)
 	clusterID := node.Labels[liqoconst.RemoteClusterID]
 	if clusterID == "" {
+		klog.V(5).Infof("Not a Liqo node", node.Name)
 		return
 	}
 	klog.Infof("Unregistering ResourceOffer for cluster %s", clusterID)
@@ -155,8 +160,10 @@ func (b *Broker) onNodeDelete(obj interface{}) {
 // onNamespaceAdd reacts to namespaces being offloaded on the broker and offloads them in turn on the assigned providers.
 func (b *Broker) onNamespaceAdd(obj interface{}) {
 	ns := obj.(*corev1.Namespace)
-	clusterID := ns.Annotations[liqoconst.RemoteNamespaceAnnotationKey]
+	klog.V(5).Infof("Namespace add: %s", ns.Name)
+	clusterID := ns.Annotations[forge.LiqoOriginClusterIDKey]
 	if clusterID == "" {
+		klog.V(5).Infof("Not a Liqo namespace")
 		return
 	}
 
