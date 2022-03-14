@@ -9,6 +9,8 @@ It can be used to share the resources of a number of "provider" clusters and pre
 ### On the broker's cluster
 
  - Create a pod with this broker (use image `capacitorset/liqo-broker`), and create a service pointing to it.
+ 
+ - Suppose the service is called `broker-svc` in the `broker` namespace, then the address would be `broker-svc.broker.svc.cluster.local`. Edit the `liqo-controller-manager` deployment to add the following flag: `--external-monitor=broker-svc.broker.svc.cluster.local`.
 
  - Create a NamespaceOffloading in the `liqo` namespace with `podOffloadingStrategy: Local`, so that the `liqo-network-manager` service is reflected on the customer's cluster:
     
@@ -30,11 +32,19 @@ It can be used to share the resources of a number of "provider" clusters and pre
                 - virtual-node
     ```
 
+ - Create an outgoing peering with the customer. This is required to reflect the `liqo-network-manager` service.
+
 ### On the customer's cluster
 
  - Take note of the address of the service you reflected in the previous steps on the cluster. For example, if `kubectl get svc -A` shows that the service is called `liqo-network-manager` and belongs to the namespace `liqo-broker-b9d3d5`, then the address would be `liqo-network-manager.liqo-broker-b9d3d5.svc.cluster.local`.
 
- - Edit the `liqo-controller-manager` deployment to add the following command line flag: `--kubelet-extra-args=--remote-ipam=server=liqo-network-manager.liqo-broker-b9d3d5.svc.cluster.local` (where the argument is the address you found in the previous step). Also, set `--kubelet-image=capacitorset/liqo-broker-vk:latest`.
+ - Edit the `liqo-controller-manager` deployment to add the following command line flags:
+
+
+    ```
+--kubelet-extra-args=--remote-ipam=server=<the address you just found>
+--kubelet-image=capacitorset/liqo-broker-vk:latest
+    ```
 
 ## Usage
 
