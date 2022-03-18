@@ -10,7 +10,7 @@ It can be used to share the resources of a number of "provider" clusters and pre
 
  - Create a pod with this broker (use image `capacitorset/liqo-broker`), and create a service pointing to it.
  
- - Suppose the service is called `broker-svc` in the `broker` namespace, then the address would be `broker-svc.broker.svc.cluster.local`. Edit the `liqo-controller-manager` deployment to add the following flag: `--external-monitor=broker-svc.broker.svc.cluster.local`.
+ - Suppose the service is called `broker-svc` in the `broker` namespace, then the address would be `broker-svc.broker.svc.cluster.local`. Edit the `liqo-controller-manager` deployment to add the following flag: `--external-monitor=broker-svc.broker.svc.cluster.local:7000`.
 
  - Create a NamespaceOffloading in the `liqo` namespace with `podOffloadingStrategy: Local`, so that the `liqo-network-manager` service is reflected on the customer's cluster:
     
