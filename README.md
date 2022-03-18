@@ -41,10 +41,10 @@ It can be used to share the resources of a number of "provider" clusters and pre
  - Edit the `liqo-controller-manager` deployment to add the following command line flags:
 
 
-    ```
+```
 --kubelet-extra-args=--remote-ipam=server=<the address you just found>
 --kubelet-image=capacitorset/liqo-broker-vk:latest
-    ```
+```
 
 ## Usage
 
