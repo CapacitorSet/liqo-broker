@@ -42,7 +42,7 @@ It can be used to share the resources of a number of "provider" clusters and pre
 
 
 ```
---kubelet-extra-args=--remote-ipam=server=<the address you just found>
+--kubelet-extra-args=--remote-ipam=server=<the address you just found>:6000
 --kubelet-image=capacitorset/liqo-broker-vk:latest
 ```
 
