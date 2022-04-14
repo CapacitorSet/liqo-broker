@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	discoveryv1alpha1 "github.com/liqotech/liqo/apis/discovery/v1alpha1"
 	"os"
 	"time"
 
@@ -27,6 +28,7 @@ func init() {
 
 	_ = sharingv1alpha1.AddToScheme(scheme)
 	_ = offloadingv1alpha1.AddToScheme(scheme)
+	_ = discoveryv1alpha1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -76,8 +78,9 @@ func main() {
 	if err = mgr.Add(broker); err != nil {
 		klog.Fatal(err)
 	}
-	grpcServer := &BrokerGRPCServer{Broker: broker}
-	if err = mgr.Add(grpcServer); err != nil {
+
+	http := &HTTPServer{mgr.GetClient(), broker}
+	if err = mgr.Add(http); err != nil {
 		klog.Fatal(err)
 	}
 
