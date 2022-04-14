@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	discoveryv1alpha1 "github.com/liqotech/liqo/apis/discovery/v1alpha1"
 	"os"
 	"time"
 
@@ -27,6 +28,7 @@ func init() {
 
 	_ = sharingv1alpha1.AddToScheme(scheme)
 	_ = offloadingv1alpha1.AddToScheme(scheme)
+	_ = discoveryv1alpha1.AddToScheme(scheme)
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -35,6 +37,7 @@ func main() {
 	probeAddr := flag.String("health-probe-address", ":8081", "The address the health probe endpoint binds to")
 
 	isCatalog := flag.Bool("with-catalog", false, "Enable catalog features")
+	isOrchestrator := flag.Bool("with-orchestrator", false, "Enable orchestrator features")
 	isAggregator := flag.Bool("with-aggregator", false, "Enable aggregator features")
 
 	// Global parameters
@@ -44,8 +47,8 @@ func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
 
-	if !*isCatalog && !*isAggregator {
-		klog.Error("You must select either --with-catalog, --with-aggregator, or both")
+	if !*isCatalog && !*isOrchestrator && !*isAggregator {
+		klog.Error("You must select one or more of --with-catalog, --with-orchestrator or --with-aggregator")
 		os.Exit(1)
 	}
 
@@ -80,6 +83,12 @@ func main() {
 		klog.Fatal(err)
 	}
 
+	if *isAggregator && *isOrchestrator {
+		// TODO: implement this
+		klog.Error("This mode of operation is not currently supported.")
+		os.Exit(1)
+	}
+
 	if *isAggregator {
 		aggregator := NewAggregator(clientset, *resyncPeriod, mgr.GetClient())
 		if err = mgr.Add(aggregator); err != nil {
@@ -87,6 +96,21 @@ func main() {
 		}
 		grpcServer := &AggregatorGRPCServer{Aggregator: aggregator}
 		if err = mgr.Add(grpcServer); err != nil {
+			klog.Fatal(err)
+		}
+	}
+	if *isOrchestrator { // Also applies when both catalog and orchestrator are selected
+		orchestrator := NewOrchestrator(clientset, *resyncPeriod, mgr.GetClient())
+		if err = mgr.Add(orchestrator); err != nil {
+			klog.Fatal(err)
+		}
+		http := &HTTPServer{mgr.GetClient(), true, orchestrator}
+		if err = mgr.Add(http); err != nil {
+			klog.Fatal(err)
+		}
+	} else if *isCatalog {
+		http := &HTTPServer{mgr.GetClient(), false, nil}
+		if err = mgr.Add(http); err != nil {
 			klog.Fatal(err)
 		}
 	}
