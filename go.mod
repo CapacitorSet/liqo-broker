@@ -3,7 +3,7 @@ module github.com/CapacitorSet/liqo-broker
 go 1.17
 
 require (
-	github.com/liqotech/liqo v0.4.1-0.20220414100853-009e1ba7e0d9
+	github.com/liqotech/liqo v0.4.1-0.20220414133957-7353f8ead7a0
 	google.golang.org/grpc v1.45.0
 	k8s.io/api v0.23.5
 	k8s.io/apimachinery v0.23.5
