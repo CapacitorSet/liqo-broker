@@ -34,12 +34,20 @@ func main() {
 	metricsAddr := flag.String("metrics-address", ":8080", "The address the metric endpoint binds to")
 	probeAddr := flag.String("health-probe-address", ":8081", "The address the health probe endpoint binds to")
 
+	isCatalog := flag.Bool("with-catalog", false, "Enable catalog features")
+	isAggregator := flag.Bool("with-aggregator", false, "Enable aggregator features")
+
 	// Global parameters
 	resyncPeriod := flag.Duration("resync-period", 10*time.Hour, "The resync period for the informers")
 
 	restcfg.InitFlags(nil)
 	klog.InitFlags(nil)
 	flag.Parse()
+
+	if !*isCatalog && !*isAggregator {
+		klog.Error("You must select either --with-catalog, --with-aggregator, or both")
+		os.Exit(1)
+	}
 
 	ctx := ctrl.SetupSignalHandler()
 
@@ -72,13 +80,15 @@ func main() {
 		klog.Fatal(err)
 	}
 
-	broker := NewBroker(clientset, *resyncPeriod, mgr.GetClient())
-	if err = mgr.Add(broker); err != nil {
-		klog.Fatal(err)
-	}
-	grpcServer := &BrokerGRPCServer{Broker: broker}
-	if err = mgr.Add(grpcServer); err != nil {
-		klog.Fatal(err)
+	if *isAggregator {
+		aggregator := NewAggregator(clientset, *resyncPeriod, mgr.GetClient())
+		if err = mgr.Add(aggregator); err != nil {
+			klog.Fatal(err)
+		}
+		grpcServer := &AggregatorGRPCServer{Aggregator: aggregator}
+		if err = mgr.Add(grpcServer); err != nil {
+			klog.Fatal(err)
+		}
 	}
 
 	klog.Info("starting")

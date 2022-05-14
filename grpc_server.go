@@ -10,33 +10,33 @@ import (
 	"k8s.io/klog/v2"
 )
 
-type BrokerGRPCServer struct {
+type AggregatorGRPCServer struct {
 	Server *grpc.Server
-	Broker *Broker
+	Aggregator *Aggregator
 	resourcemonitors.ResourceReaderServer
 	PushChannel resourcemonitors.ResourceReader_SubscribeServer // A gRPC endpoint where to push update notifications
 }
 
-func (b *BrokerGRPCServer) Start(ctx context.Context) error {
+func (a *AggregatorGRPCServer) Start(ctx context.Context) error {
 	lis, err := net.Listen("tcp", fmt.Sprintf("%s%d", "0.0.0.0:", 7000))
 	if err != nil {
 		return err
 	}
-	b.Server = grpc.NewServer()
-	resourcemonitors.RegisterResourceReaderServer(b.Server, b)
+	a.Server = grpc.NewServer()
+	resourcemonitors.RegisterResourceReaderServer(a.Server, a)
 	go func() {
 		<-ctx.Done()
-		b.Server.GracefulStop()
+		a.Server.GracefulStop()
 	}()
-	if err = b.Server.Serve(lis); err != nil {
+	if err = a.Server.Serve(lis); err != nil {
 		klog.Error(err)
 		return err
 	}
 	return nil
 }
 
-func (b *BrokerGRPCServer) ReadResources(ctx context.Context, req *resourcemonitors.ReadRequest) (*resourcemonitors.ReadResponse, error) {
-	response, err := b.Broker.ReadResources(ctx, req.GetOriginator())
+func (a *AggregatorGRPCServer) ReadResources(ctx context.Context, req *resourcemonitors.ReadRequest) (*resourcemonitors.ReadResponse, error) {
+	response, err := a.Aggregator.ReadResources(ctx, req.GetOriginator())
 	if err != nil {
 		return &resourcemonitors.ReadResponse{}, err
 	}
@@ -51,28 +51,28 @@ func (b *BrokerGRPCServer) ReadResources(ctx context.Context, req *resourcemonit
 	return protobufResponse, nil
 }
 
-func (b *BrokerGRPCServer) Subscribe(req *resourcemonitors.SubscribeRequest, srv resourcemonitors.ResourceReader_SubscribeServer) error {
-	if b.PushChannel != nil {
+func (a *AggregatorGRPCServer) Subscribe(req *resourcemonitors.SubscribeRequest, srv resourcemonitors.ResourceReader_SubscribeServer) error {
+	if a.PushChannel != nil {
 		klog.Warningf("Subscribe(): a PushChannel was already configured, and was overwritten")
 	}
-	b.PushChannel = srv
-	b.Broker.Register(b)
+	a.PushChannel = srv
+	a.Aggregator.Register(a)
 	select {}
 }
 
 // NotifyChange is called by the broker when resources change. It pushes the update to the upstream API.
-func (b *BrokerGRPCServer) NotifyChange() {
-	if b.PushChannel == nil {
+func (a *AggregatorGRPCServer) NotifyChange() {
+	if a.PushChannel == nil {
 		klog.Errorf("NotifyChange() was called with no configured PushChannel")
 		return
 	}
-	err := b.PushChannel.Send(&resourcemonitors.UpdateNotification{})
+	err := a.PushChannel.Send(&resourcemonitors.UpdateNotification{})
 	if err != nil {
 		klog.Error(err)
 	}
 }
 
-func (b *BrokerGRPCServer) RemoveCluster(ctx context.Context, req *resourcemonitors.RemoveRequest) (*resourcemonitors.RemoveResponse, error) {
-	b.Broker.RemoveClusterID(req.GetCluster())
+func (a *AggregatorGRPCServer) RemoveCluster(ctx context.Context, req *resourcemonitors.RemoveRequest) (*resourcemonitors.RemoveResponse, error) {
+	a.Aggregator.RemoveClusterID(req.GetCluster())
 	return &resourcemonitors.RemoveResponse{}, nil
 }

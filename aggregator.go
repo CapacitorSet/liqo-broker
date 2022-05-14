@@ -26,8 +26,8 @@ type ResourceUpdateNotifier interface {
 	NotifyChange()
 }
 
-// Broker monitors resources on foreign clusters. It implements the ResourceMonitor interface.
-type Broker struct {
+// Aggregator monitors resources on foreign clusters. It implements the ResourceMonitor interface.
+type Aggregator struct {
 	client.Client
 	notifier ResourceUpdateNotifier
 
@@ -44,8 +44,8 @@ type Broker struct {
 	nsInformer cache.SharedIndexInformer
 }
 
-// NewBroker creates a new Broker.
-func NewBroker(clientset kubernetes.Interface, resyncPeriod time.Duration, k8sClient client.Client) *Broker {
+// NewAggregator creates a new Aggregator.
+func NewAggregator(clientset kubernetes.Interface, resyncPeriod time.Duration, k8sClient client.Client) *Aggregator {
 	nodeFactory := informers.NewSharedInformerFactoryWithOptions(
 		clientset, resyncPeriod, informers.WithTweakListOptions(virtualNodesFilter),
 	)
@@ -53,7 +53,7 @@ func NewBroker(clientset kubernetes.Interface, resyncPeriod time.Duration, k8sCl
 	nsFactory := informers.NewSharedInformerFactory(clientset, resyncPeriod)
 	nsInformer := nsFactory.Core().V1().Namespaces().Informer()
 
-	broker := &Broker{
+	broker := &Aggregator{
 		nodeResources: map[string]corev1.ResourceList{},
 		nodeFactory:   nodeFactory,
 		nsFactory:     nsFactory,
@@ -77,23 +77,23 @@ func NewBroker(clientset kubernetes.Interface, resyncPeriod time.Duration, k8sCl
 	return broker
 }
 
-func (b *Broker) Start(ctx context.Context) error {
-	b.nodeFactory.Start(ctx.Done())
-	b.nodeFactory.WaitForCacheSync(ctx.Done())
-	b.nsFactory.Start(ctx.Done())
-	b.nsFactory.WaitForCacheSync(ctx.Done())
+func (a *Aggregator) Start(ctx context.Context) error {
+	a.nodeFactory.Start(ctx.Done())
+	a.nodeFactory.WaitForCacheSync(ctx.Done())
+	a.nsFactory.Start(ctx.Done())
+	a.nsFactory.WaitForCacheSync(ctx.Done())
 	return nil
 }
 
 // ReadResources returns the resources available for the given cluster.
-func (b *Broker) ReadResources(ctx context.Context, clusterID string) (corev1.ResourceList, error) {
+func (a *Aggregator) ReadResources(ctx context.Context, clusterID string) (corev1.ResourceList, error) {
 	totalResources := make(corev1.ResourceList)
-	for cluster := range b.nodeResources {
+	for cluster := range a.nodeResources {
 		// Ignore requester
 		if cluster == clusterID {
 			continue
 		}
-		resources, err := b.getClusterOffer(ctx, cluster)
+		resources, err := a.getClusterOffer(ctx, cluster)
 		if err != nil {
 			klog.Errorf("Reading cluster offer for %s: %s", cluster, err)
 			return nil, err
@@ -109,17 +109,17 @@ func (b *Broker) ReadResources(ctx context.Context, clusterID string) (corev1.Re
 }
 
 // Register registers a notifier.
-func (b *Broker) Register(notifier ResourceUpdateNotifier) {
-	b.notifier = notifier
+func (a *Aggregator) Register(notifier ResourceUpdateNotifier) {
+	a.notifier = notifier
 }
 
 // RemoveClusterID removes a cluster from internal data structures.
-func (b *Broker) RemoveClusterID(clusterID string) {
-	delete(b.nodeResources, clusterID)
+func (a *Aggregator) RemoveClusterID(clusterID string) {
+	delete(a.nodeResources, clusterID)
 }
 
 // onNodeAddOrUpdate reacts to virtual nodes being created, and registers the corresponding ResourceOffer.
-func (b *Broker) onNodeAddOrUpdate(obj interface{}) {
+func (a *Aggregator) onNodeAddOrUpdate(obj interface{}) {
 	node := obj.(*corev1.Node)
 	klog.V(5).Infof("Node add: %s", node.Name)
 	// Do not register the ResourceOffer until the node is ready
@@ -132,18 +132,18 @@ func (b *Broker) onNodeAddOrUpdate(obj interface{}) {
 		return
 	}
 
-	resources, err := b.getClusterOffer(context.Background(), clusterID)
+	resources, err := a.getClusterOffer(context.Background(), clusterID)
 	if err != nil {
 		// todo: use informer/keep polling for ResourceOffer, in case it is added later
 		klog.Errorf("Failed to register resources for node %s: %s", node.Name, err)
 		return
 	}
 	klog.Infof("Registering ResourceOffer for cluster %s", clusterID)
-	b.nodeResources[clusterID] = resources.DeepCopy()
-	b.notifyOrWarn()
+	a.nodeResources[clusterID] = resources.DeepCopy()
+	a.notifyOrWarn()
 }
 
-func (b *Broker) onNodeDelete(obj interface{}) {
+func (a *Aggregator) onNodeDelete(obj interface{}) {
 	node := obj.(*corev1.Node)
 	klog.V(5).Infof("Node delete: %s", node.Name)
 	clusterID := node.Labels[liqoconst.RemoteClusterID]
@@ -152,12 +152,12 @@ func (b *Broker) onNodeDelete(obj interface{}) {
 		return
 	}
 	klog.Infof("Unregistering ResourceOffer for cluster %s", clusterID)
-	delete(b.nodeResources, clusterID)
-	b.notifyOrWarn()
+	delete(a.nodeResources, clusterID)
+	a.notifyOrWarn()
 }
 
 // onNamespaceAdd reacts to namespaces being offloaded on the broker and offloads them in turn on the assigned providers.
-func (b *Broker) onNamespaceAdd(obj interface{}) {
+func (a *Aggregator) onNamespaceAdd(obj interface{}) {
 	ns := obj.(*corev1.Namespace)
 	klog.V(5).Infof("Namespace add: %s", ns.Name)
 	clusterID := ns.Labels[liqoconst.RemoteClusterID]
@@ -194,17 +194,17 @@ func (b *Broker) onNamespaceAdd(obj interface{}) {
 		},
 		Status: offv1alpha1.NamespaceOffloadingStatus{},
 	}
-	err := b.Client.Create(context.TODO(), nsOffloading)
+	err := a.Client.Create(context.TODO(), nsOffloading)
 	if err != nil {
 		klog.Errorf("onNamespaceAdd: %s", err)
 	}
-	b.notifyOrWarn()
+	a.notifyOrWarn()
 }
 
 // getClusterOffer returns the resources corresponding to a cluster's ResourceOffer.
-func (b *Broker) getClusterOffer(ctx context.Context, clusterID string) (corev1.ResourceList, error) {
+func (a *Aggregator) getClusterOffer(ctx context.Context, clusterID string) (corev1.ResourceList, error) {
 	offerList := &sharingv1alpha1.ResourceOfferList{}
-	err := b.Client.List(ctx, offerList, client.MatchingLabels{
+	err := a.Client.List(ctx, offerList, client.MatchingLabels{
 		liqoconst.ReplicationOriginLabel: clusterID,
 	})
 	if err != nil {
@@ -218,11 +218,11 @@ func (b *Broker) getClusterOffer(ctx context.Context, clusterID string) (corev1.
 	return offerList.Items[0].Spec.ResourceQuota.Hard, nil
 }
 
-func (b *Broker) notifyOrWarn() {
-	if b.notifier == nil {
+func (a *Aggregator) notifyOrWarn() {
+	if a.notifier == nil {
 		klog.Warning("No notifier is configured, an update will be lost")
 	} else {
-		b.notifier.NotifyChange()
+		a.notifier.NotifyChange()
 	}
 }
 
