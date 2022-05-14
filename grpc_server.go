@@ -10,6 +10,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
+// AggregatorGRPCServer exposes the Aggregator over gRPC.
 type AggregatorGRPCServer struct {
 	Server *grpc.Server
 	Aggregator *Aggregator

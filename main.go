@@ -83,12 +83,6 @@ func main() {
 		klog.Fatal(err)
 	}
 
-	if *isAggregator && *isOrchestrator {
-		// TODO: implement this
-		klog.Error("This mode of operation is not currently supported.")
-		os.Exit(1)
-	}
-
 	if *isAggregator {
 		aggregator := NewAggregator(clientset, *resyncPeriod, mgr.GetClient())
 		if err = mgr.Add(aggregator); err != nil {
@@ -98,8 +92,16 @@ func main() {
 		if err = mgr.Add(grpcServer); err != nil {
 			klog.Fatal(err)
 		}
+		if !*isOrchestrator {
+			// We still need an orchestrator to reflect namespaces
+			orchestrator := NewTrivialOrchestrator(clientset, *resyncPeriod, mgr.GetClient())
+			if err = mgr.Add(orchestrator); err != nil {
+				klog.Fatal(err)
+			}
+		}
 	}
-	if *isOrchestrator { // Also applies when both catalog and orchestrator are selected
+
+	if *isOrchestrator { // Also applies when both aggregator and orchestrator are selected
 		orchestrator := NewOrchestrator(clientset, *resyncPeriod, mgr.GetClient())
 		if err = mgr.Add(orchestrator); err != nil {
 			klog.Fatal(err)
