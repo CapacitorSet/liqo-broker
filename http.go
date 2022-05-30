@@ -65,7 +65,7 @@ func (s *HTTPServer) Start(ctx context.Context) error {
 	if s.isOrchestrator {
 		http.HandleFunc("/api/toggle", s.ToggleCluster)
 	}
-	srv := &http.Server{Addr: ":7000"}
+	srv := &http.Server{Addr: ":8000"}
 	go func() {
 		<-ctx.Done()
 		srv.Shutdown(context.Background())
