@@ -15,7 +15,9 @@ Liqo-broker offers added-value services to a federation targeting different scen
 
 ## Catalog
 
-![Catalog diagram](./img/catalog.svg)
+<p align="center">
+  <img src="./img/catalog.svg" />
+</p>
 
 The dashed-arrow step (#1) describes the setup phase; the solid-arrow steps (#2 to #4) describe the use phase.
 
@@ -96,7 +98,9 @@ This API is meant to be consumed by a client application that can display this i
 
 ## Orchestrator
 
-![Orchestrator diagram](./img/orchestrator.svg)
+<p align="center">
+  <img src="./img/orchestrator.svg" />
+</p>
 
 The dashed-arrow steps (#1 to #3) describe the setup phase; the solid-arrow steps (#4 to #6) describe the use phase.
 
@@ -169,7 +173,9 @@ Note that the data plane is direct: when the consumer generates traffic towards 
 
 ## Aggregator
 
-![Aggregator diagram](./img/aggregator.svg)
+<p align="center">
+  <img src="./img/aggregator.svg" />
+</p>
 
 The dashed-arrow steps (#1 to #2) describe the setup phase; the solid-arrow steps (#3 to #6) describe the use phase.
 
