@@ -1,0 +1,18 @@
+apiVersion: offloading.liqo.io/v1alpha1
+kind: NamespaceOffloading
+metadata:
+  name: offloading
+spec:
+  clusterSelector:
+    nodeSelectorTerms:
+    - matchExpressions:
+      - key: liqo.io/type
+        operator: In
+        values:
+        - virtual-node
+      - key: liqo.io/remote-cluster-id
+        operator: In
+        values:
+        - a3872735-28b6-436c-bb6c-522617eed69b # Cluster ID of the broker
+  namespaceMappingStrategy: DefaultName
+  podOffloadingStrategy: LocalAndRemote # Use LocalAndRemote or Remote as needed
